@@ -1,0 +1,10 @@
+{
+  "name": "Text Snippets",
+  "identifier": "qownnotes-snippets",
+  "version": "0.1.0",
+  "description": "Insertion et gestion de snippets texte avec placeholders ({{date}}, {{hour}}) dans les notes.",
+  "script": "snippets.qml",
+  "authors": ["alan"],
+  "platforms": ["linux", "macos", "windows"],
+  "minAppVersion": "22.12.0"
+}

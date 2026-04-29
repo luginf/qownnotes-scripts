@@ -1,0 +1,14 @@
+[
+  {
+    "name": "Reference",
+    "content": "## Reference\n\nid$CURRENT_YEAR$CURRENT_MONTH$CURRENT_DATEx$CURRENT_HOUR$CURRENT_MINUTE$CURRENT_SECOND\n\n\nSee also:\n-\n-\n\n#tag"
+  },
+  {
+    "name": "test",
+    "content": "just a test"
+  },
+  {
+    "name": "Zettelkasten_id",
+    "content": "id$CURRENT_YEAR$CURRENT_MONTH$CURRENT_DATEx$CURRENT_HOUR$CURRENT_MINUTE$CURRENT_SECOND"
+  }
+]
