@@ -22,6 +22,63 @@ Window {
     property bool updating: false
     property bool isDirty: false
 
+    SystemPalette { id: palette }
+
+    Window {
+        id: helpWindow
+        title: "Snippets — Placeholders"
+        width: 640
+        height: 460
+        minimumWidth: 500
+        minimumHeight: 360
+        flags: Qt.Dialog | Qt.WindowCloseButtonHint
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 16
+            spacing: 12
+
+            TextArea {
+                Layout.fillWidth: true
+                readOnly: true
+                selectByMouse: true
+                background: null
+                font.family: "monospace"
+                font.pointSize: Qt.application.font.pointSize - 1
+                text:
+                    "Date & time\n" +
+                    "  $CURRENT_YEAR             four-digit year          2026\n" +
+                    "  $CURRENT_YEAR_SHORT        two-digit year           26\n" +
+                    "  $CURRENT_MONTH             two-digit month          04\n" +
+                    "  $CURRENT_MONTH_NAME        full month name          April\n" +
+                    "  $CURRENT_MONTH_NAME_SHORT  short month name         Apr\n" +
+                    "  $CURRENT_DATE              two-digit day            29\n" +
+                    "  $CURRENT_HOUR              hour 00–23               14\n" +
+                    "  $CURRENT_MINUTE            two-digit minute         07\n" +
+                    "  $CURRENT_SECOND            two-digit second         03\n" +
+                    "  $CURRENT_SECONDS_UNIX      Unix timestamp           1745920023\n\n" +
+                    "Identifiers\n" +
+                    "  $UUID                      UUID v4                  550e8400-e29b-41d4-a716-446655440000\n\n" +
+                    "Note context\n" +
+                    "  $NOTE_TITLE                current note title       My note\n" +
+                    "  $NOTE_FILENAME             current note filename    my-note.md\n\n" +
+                    "System\n" +
+                    "  $OS_NAME                   operating system         Linux / macOS / Windows"
+            }
+
+            Item { Layout.fillHeight: true }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Item { Layout.fillWidth: true }
+                Button {
+                    text: "Close"
+                    onClicked: helpWindow.close()
+                }
+            }
+        }
+    }
+
     Component.onCompleted: {
         items = JSON.parse(JSON.stringify(snippets));
     }
@@ -138,27 +195,39 @@ Window {
                 Label {
                     text: "Content"
                     color: palette.dark
-                    font.pointSize: font.pointSize - 1
+                    font.pointSize: Qt.application.font.pointSize - 1
                 }
 
-                ScrollView {
+                Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    border.color: contentArea.activeFocus ? palette.highlight : palette.mid
+                    border.width: 1
+                    radius: 3
+                    color: palette.base
                     clip: true
 
-                    TextArea {
-                        id: contentArea
-                        width: parent.width
-                        wrapMode: Text.Wrap
-                        selectByMouse: true
-                        placeholderText: "Snippet content…"
-                        background: Rectangle {
-                            border.color: contentArea.activeFocus ? palette.highlight : palette.mid
-                            border.width: 1
-                            radius: 3
-                            color: palette.base
+                    Flickable {
+                        id: contentFlick
+                        anchors.fill: parent
+                        anchors.margins: 1
+                        contentWidth: width
+                        contentHeight: contentArea.implicitHeight
+                        flickableDirection: Flickable.VerticalFlick
+                        clip: true
+
+                        TextArea {
+                            id: contentArea
+                            width: contentFlick.width
+                            height: Math.max(contentFlick.height, implicitHeight)
+                            wrapMode: Text.Wrap
+                            selectByMouse: true
+                            placeholderText: "Snippet content…"
+                            background: null
+                            onTextChanged: if (!updating) isDirty = true
                         }
-                        onTextChanged: if (!updating) isDirty = true
+
+                        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
                     }
                 }
 
@@ -177,6 +246,10 @@ Window {
         // ── Bottom bar ───────────────────────────────────────────────────────
         RowLayout {
             Layout.fillWidth: true
+            Button {
+                text: "Placeholders…"
+                onClicked: helpWindow.show()
+            }
             Item { Layout.fillWidth: true }
             Button {
                 text: "Close"

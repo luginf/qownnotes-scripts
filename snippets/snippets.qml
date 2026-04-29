@@ -14,6 +14,13 @@
 //
 // Placeholders (identifiers):
 //   $UUID                     UUID v4                  550e8400-e29b-41d4-a716-446655440000
+//
+// Placeholders (note context):
+//   $NOTE_TITLE               current note title       My note
+//   $NOTE_FILENAME            current note filename    my-note.md
+//
+// Placeholders (system):
+//   $OS_NAME                  operating system name    Linux
 
 import QtQml 2.0
 import QOwnNotesTypes 1.0
@@ -24,7 +31,6 @@ Script {
     function init() {
         script.registerCustomAction("insertSnippet", "Insert snippet", "Snippet", "", false, false, false);
         script.registerCustomAction("manageSnippets", "Manage snippets", "", "", false, true, false);
-        script.registerCustomAction("snippetsHelp", "Snippets — placeholders help", "", "", false, true, false);
     }
 
     function customActionInvoked(identifier) {
@@ -32,8 +38,6 @@ Script {
             insertSnippet();
         } else if (identifier === "manageSnippets") {
             manageSnippets();
-        } else if (identifier === "snippetsHelp") {
-            snippetsHelp();
         }
     }
 
@@ -53,6 +57,8 @@ Script {
     function processPlaceholders(text) {
         var now = new Date();
         var loc = Qt.locale();
+        var note = script.currentNote();
+        var osMap = { "linux": "Linux", "osx": "macOS", "windows": "Windows", "unix": "Unix" };
         return text
             .replace(/\$CURRENT_YEAR_SHORT/g,      String(now.getFullYear()).slice(-2))
             .replace(/\$CURRENT_YEAR/g,             String(now.getFullYear()))
@@ -64,7 +70,10 @@ Script {
             .replace(/\$CURRENT_MINUTE/g,           pad(now.getMinutes()))
             .replace(/\$CURRENT_SECOND/g,           pad(now.getSeconds()))
             .replace(/\$CURRENT_SECONDS_UNIX/g,     String(Math.floor(now.getTime() / 1000)))
-            .replace(/\$UUID/g,                     generateUUID());
+            .replace(/\$UUID/g,                     generateUUID())
+            .replace(/\$NOTE_TITLE/g,               note ? note.name     : "")
+            .replace(/\$NOTE_FILENAME/g,            note ? note.fileName : "")
+            .replace(/\$OS_NAME/g,                  osMap[Qt.platform.os] || Qt.platform.os);
     }
 
     function snippetsFilePath() {
@@ -110,26 +119,6 @@ Script {
                 return;
             }
         }
-    }
-
-    function snippetsHelp() {
-        script.informationMessageBox(
-            "Date & time\n" +
-            "  $CURRENT_YEAR             2026\n" +
-            "  $CURRENT_YEAR_SHORT       26\n" +
-            "  $CURRENT_MONTH            04\n" +
-            "  $CURRENT_MONTH_NAME       April  (system locale)\n" +
-            "  $CURRENT_MONTH_NAME_SHORT Apr    (system locale)\n" +
-            "  $CURRENT_DATE             29\n" +
-            "  $CURRENT_HOUR             14\n" +
-            "  $CURRENT_MINUTE           07\n" +
-            "  $CURRENT_SECOND           03\n" +
-            "  $CURRENT_SECONDS_UNIX     1745920023\n" +
-            "\n" +
-            "Identifiers\n" +
-            "  $UUID                     550e8400-e29b-41d4-a716-446655440000",
-            "Snippets — placeholders"
-        );
     }
 
     function manageSnippets() {
