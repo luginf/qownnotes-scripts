@@ -1,3 +1,20 @@
+// Text Snippets — insert reusable text snippets with placeholders into notes.
+//
+// Placeholders (date & time):
+//   $CURRENT_YEAR             four-digit year          2026
+//   $CURRENT_YEAR_SHORT       two-digit year           26
+//   $CURRENT_MONTH            two-digit month          04
+//   $CURRENT_MONTH_NAME       full month name          April  (system locale)
+//   $CURRENT_MONTH_NAME_SHORT short month name         Apr    (system locale)
+//   $CURRENT_DATE             two-digit day            29
+//   $CURRENT_HOUR             hour 00–23               14
+//   $CURRENT_MINUTE           two-digit minute         07
+//   $CURRENT_SECOND           two-digit second         03
+//   $CURRENT_SECONDS_UNIX     Unix timestamp           1745920023
+//
+// Placeholders (identifiers):
+//   $UUID                     UUID v4                  550e8400-e29b-41d4-a716-446655440000
+
 import QtQml 2.0
 import QOwnNotesTypes 1.0
 
@@ -7,6 +24,7 @@ Script {
     function init() {
         script.registerCustomAction("insertSnippet", "Insert snippet", "Snippet", "", false, false, false);
         script.registerCustomAction("manageSnippets", "Manage snippets", "", "", false, true, false);
+        script.registerCustomAction("snippetsHelp", "Snippets — placeholders help", "", "", false, true, false);
     }
 
     function customActionInvoked(identifier) {
@@ -14,6 +32,8 @@ Script {
             insertSnippet();
         } else if (identifier === "manageSnippets") {
             manageSnippets();
+        } else if (identifier === "snippetsHelp") {
+            snippetsHelp();
         }
     }
 
@@ -90,6 +110,26 @@ Script {
                 return;
             }
         }
+    }
+
+    function snippetsHelp() {
+        script.informationMessageBox(
+            "Date & time\n" +
+            "  $CURRENT_YEAR             2026\n" +
+            "  $CURRENT_YEAR_SHORT       26\n" +
+            "  $CURRENT_MONTH            04\n" +
+            "  $CURRENT_MONTH_NAME       April  (system locale)\n" +
+            "  $CURRENT_MONTH_NAME_SHORT Apr    (system locale)\n" +
+            "  $CURRENT_DATE             29\n" +
+            "  $CURRENT_HOUR             14\n" +
+            "  $CURRENT_MINUTE           07\n" +
+            "  $CURRENT_SECOND           03\n" +
+            "  $CURRENT_SECONDS_UNIX     1745920023\n" +
+            "\n" +
+            "Identifiers\n" +
+            "  $UUID                     550e8400-e29b-41d4-a716-446655440000",
+            "Snippets — placeholders"
+        );
     }
 
     function manageSnippets() {
