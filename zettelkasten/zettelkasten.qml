@@ -95,6 +95,16 @@ Script {
 
     // Returns the link target string for [[target|id]] given a note object.
     function noteLinkTarget(note) {
+        var name = note && note.name ? note.name : "";
+        if (name) {
+            var relativeDir = note.relativeNoteFileDirPath || "";
+            if (relativeDir) {
+                relativeDir = relativeDir.replace(/[\/\\]+$/, "");
+                return relativeDir ? relativeDir + "/" + name : name;
+            }
+            return name;
+        }
+
         return /\.txt$/i.test(note.fileName) ? note.fileName.slice(0, note.fileName.length - 4) : note.fileName;
     }
 
