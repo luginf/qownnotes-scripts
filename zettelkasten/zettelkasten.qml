@@ -25,25 +25,29 @@ Script {
     // Runtime state — not a user setting
     property string notesDir: ""
 
-    property variant settingsVariables: [{
+    property variant settingsVariables: [
+        {
             "identifier": "idFormat",
             "name": "ID generation format",
             "description": "Format string for generating new IDs.\nTokens: %Y=year  %M=month  %D=day  %h=hour  %m=minute  %s=second\nLiteral characters are kept as-is.\n\nExamples:\n  %Y%M%D%h%m%s        →  20260430143012\n  id%Y%M%Dx%h%m%s     →  id20260430x143012\n  %Y-%M-%D            →  2026-04-30",
             "type": "string",
             "default": "%Y%M%D%h%m%s"
-        }, {
+        },
+        {
             "identifier": "idRegex",
             "name": "ID detection pattern (ECMAScript regex)",
             "description": "Pattern used to detect Zettelkasten IDs in note filenames and content.\nDefault matches 14-digit timestamps: \\d{14}",
             "type": "string",
             "default": "\\d{14}"
-        }, {
+        },
+        {
             "identifier": "autoRepairLinks",
             "name": "Auto-repair backlinks on note open",
             "description": "When a note with a ZK ID is opened, automatically rewrite any backlinks in other notes that still use an outdated filename for that ID.",
             "type": "boolean",
             "default": true
-        }]
+        }
+    ]
 
     function init() {
         script.registerCustomAction("zkInsertId", "Insert Zettelkasten ID", "ZK-ID", "", false, false, true);
@@ -152,11 +156,11 @@ Script {
                 continue;
             var changed = false;
             var newText = n.noteText.replace(pattern, function (match, oldTarget) {
-                    if (oldTarget === currentTarget)
-                        return match;
-                    changed = true;
-                    return "[[" + currentTarget + "|" + zkId + "]]";
-                });
+                if (oldTarget === currentTarget)
+                    return match;
+                changed = true;
+                return "[[" + currentTarget + "|" + zkId + "]]";
+            });
             if (changed) {
                 script.writeToFile(notesDir + "/" + n.fileName, newText, false);
                 script.log("zettelkasten: repaired backlink in \"" + n.fileName + "\" → [[" + currentTarget + "|" + zkId + "]]");
@@ -196,13 +200,13 @@ Script {
                 continue;
             var changed = false;
             var newText = n.noteText.replace(pattern, function (match, linkTarget, linkId) {
-                    var correct = idMap[linkId];
-                    if (!correct || correct === linkTarget)
-                        return match;
-                    changed = true;
-                    repairedLinks++;
-                    return "[[" + correct + "|" + linkId + "]]";
-                });
+                var correct = idMap[linkId];
+                if (!correct || correct === linkTarget)
+                    return match;
+                changed = true;
+                repairedLinks++;
+                return "[[" + correct + "|" + linkId + "]]";
+            });
             if (changed) {
                 script.writeToFile(notesDir + "/" + n.fileName, newText, false);
                 repairedNotes++;
@@ -231,10 +235,10 @@ Script {
             if (!zkId)
                 continue;
             entries.push({
-                    "label": zkId + "  —  " + note.name,
-                    "linkTarget": noteLinkTarget(note),
-                    "zkId": zkId
-                });
+                "label": zkId + "  —  " + note.name,
+                "linkTarget": noteLinkTarget(note),
+                "zkId": zkId
+            });
         }
         if (entries.length === 0) {
             script.informationMessageBox("No note with a Zettelkasten ID was found.\nPattern: " + (idRegex || "\\d{14}"), "Zettelkasten");
@@ -243,23 +247,23 @@ Script {
 
         // Most recent first
         entries.sort(function (a, b) {
-                return b.zkId > a.zkId ? 1 : b.zkId < a.zkId ? -1 : 0;
-            });
+            return b.zkId > a.zkId ? 1 : b.zkId < a.zkId ? -1 : 0;
+        });
         var component = Qt.createComponent(Qt.resolvedUrl("ZkLinkDialog.qml"));
         if (component.status !== Component.Ready) {
             script.informationMessageBox("Failed to load ZkLinkDialog:\n" + component.errorString(), "Zettelkasten");
             return;
         }
         var dialog = component.createObject(null, {
-                "entries": entries
-            });
+            "entries": entries
+        });
         if (!dialog) {
             script.informationMessageBox("Failed to instantiate ZkLinkDialog.", "Zettelkasten");
             return;
         }
         dialog.linkSelected.connect(function (linkTarget, zkId) {
-                script.noteTextEditWrite("[[" + linkTarget + "|" + zkId + "]]");
-            });
+            script.noteTextEditWrite("[[" + linkTarget + "|" + zkId + "]]");
+        });
         dialog.show();
         dialog.raise();
         dialog.requestActivate();
