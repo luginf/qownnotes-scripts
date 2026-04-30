@@ -85,7 +85,9 @@ Script {
     function extractId(text) {
         try {
             var re = new RegExp(idRegex || "\\d{14}");
-            var m = text.match(re);
+            // Strip [[target|id]] links before matching so a linked ID is never
+            // mistaken for the note's own ID (which would corrupt idMap).
+            var m = text.replace(/\[\[[^\]|]*\|[^\]]*\]\]/g, "").match(re);
             return m ? m[0] : null;
         } catch (e) {
             script.log("zettelkasten: invalid ID regex — " + e);
@@ -170,7 +172,7 @@ Script {
                 return "[[" + currentTarget + "|" + zkId + "]]";
             });
             if (changed) {
-                script.writeToFile(notesDir + "/" + n.fileName, newText, false);
+                script.writeToFile(notesDir + "/" + n.fileName, newText);
                 script.log("zettelkasten: repaired backlink in \"" + n.fileName + "\" → [[" + currentTarget + "|" + zkId + "]]");
             }
         }
@@ -216,7 +218,7 @@ Script {
                 return "[[" + correct + "|" + linkId + "]]";
             });
             if (changed) {
-                script.writeToFile(notesDir + "/" + n.fileName, newText, false);
+                script.writeToFile(notesDir + "/" + n.fileName, newText);
                 repairedNotes++;
             }
         }
