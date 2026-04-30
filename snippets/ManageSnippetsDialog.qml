@@ -139,9 +139,9 @@ Window {
                 onClicked: {
                     var copy = items.slice();
                     copy.push({
-                            "name": "New snippet",
-                            "content": ""
-                        });
+                        "name": "New snippet",
+                        "content": ""
+                    });
                     items = copy;
                     var idx = items.length - 1;
                     snippetList.currentIndex = idx;
