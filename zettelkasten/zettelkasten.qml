@@ -1,8 +1,9 @@
 // Zettelkasten support for QOwnNotes.
 //
-// Two actions:
-//   • Insert ZK ID   — inserts an ID built from a configurable format string
-//   • Insert ZK link — filters notes by name, picks one, inserts [[filename|ID]]
+// Actions:
+//   • Insert ZK ID    — inserts an ID built from a configurable format string
+//   • Insert ZK link  — filters notes by name, picks one, inserts [[filename|ID]]
+//   • Repair ZK links — scans all notes and fixes [[oldName|ID]] → [[newName|ID]]
 //
 // ID format tokens:  %Y year  %M month  %D day  %h hour  %m minute  %s second
 // Example format:    id%Y%M%Dx%h%m%s  →  id20260430x143012
@@ -13,6 +14,11 @@
 //
 // Link format:  [[nom_fichier_sur_disque.md|20260430143012]]
 // QOwnNotes resolves the filename part as a wiki-link (Ctrl+click to open).
+//
+// Rename resilience: when a note carrying a ZK ID is opened, any backlinks in
+// other notes that still reference its old filename are silently rewritten to
+// use the current filename.  A manual "Repair ZK links" action (ZK-Fix toolbar
+// button) performs the same scan across the entire vault in one pass.
 
 import QtQml 2.0
 import QOwnNotesTypes 1.0
@@ -20,6 +26,10 @@ import QOwnNotesTypes 1.0
 Script {
     property string idRegex
     property string idFormat
+    property bool autoRepairLinks: true
+
+    // Runtime state — not a user setting
+    property string notesDir: ""
 
     property variant settingsVariables: [
         {
@@ -35,12 +45,20 @@ Script {
             "description": "Format string for generating new IDs.\nTokens: %Y=year  %M=month  %D=day  %h=hour  %m=minute  %s=second\nLiteral characters are kept as-is.\n\nExamples:\n  %Y%M%D%h%m%s        →  20260430143012\n  id%Y%M%Dx%h%m%s     →  id20260430x143012\n  %Y-%M-%D            →  2026-04-30",
             "type": "string",
             "default": "%Y%M%D%h%m%s"
+        },
+        {
+            "identifier": "autoRepairLinks",
+            "name": "Auto-repair backlinks on note open",
+            "description": "When a note with a ZK ID is opened, automatically rewrite any backlinks in other notes that still use an outdated filename for that ID.",
+            "type": "boolean",
+            "default": true
         }
     ]
 
     function init() {
-        script.registerCustomAction("zkInsertId",   "Insert Zettelkasten ID",   "ZK-ID",   "", false, false, true);
-        script.registerCustomAction("zkInsertLink", "Insert Zettelkasten link", "ZK-Link", "", false, false, true);
+        script.registerCustomAction("zkInsertId",    "Insert Zettelkasten ID",   "ZK-ID",  "", false, false, true);
+        script.registerCustomAction("zkInsertLink",  "Insert Zettelkasten link", "ZK-Link","", false, false, true);
+        script.registerCustomAction("zkRepairLinks", "Repair Zettelkasten links","ZK-Fix", "", false, false, false);
     }
 
     function customActionInvoked(identifier) {
@@ -48,6 +66,15 @@ Script {
             insertZkId();
         } else if (identifier === "zkInsertLink") {
             insertZkLink();
+        } else if (identifier === "zkRepairLinks") {
+            repairAllLinks();
+        }
+    }
+
+    function noteOpenedHook(note) {
+        resolveNotesDir();
+        if (autoRepairLinks !== false) {
+            repairBacklinksFor(note);
         }
     }
 
@@ -77,6 +104,143 @@ Script {
         }
     }
 
+    // Returns the link target string for [[target|id]] given a note object.
+    function noteLinkTarget(note) {
+        return /\.txt$/i.test(note.fileName)
+            ? note.fileName.slice(0, note.fileName.length - 4)
+            : note.fileName;
+    }
+
+    function regEscape(s) {
+        return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    // Populate notesDir — tries several API approaches.
+    function resolveNotesDir() {
+        if (notesDir) return;
+
+        // Strategy 1: NoteFolder.localPath
+        try {
+            var folder = script.currentNoteFolder();
+            script.log("zettelkasten: currentNoteFolder=" + JSON.stringify(folder)
+                       + " localPath=" + (folder ? folder.localPath : "n/a"));
+            if (folder && folder.localPath) {
+                notesDir = folder.localPath;
+                return;
+            }
+        } catch (e) {
+            script.log("zettelkasten: currentNoteFolder() error: " + e);
+        }
+
+        // Strategy 2: current note's full file path
+        try {
+            var note = script.currentNote();
+            script.log("zettelkasten: currentNote.fullNoteFilePath="
+                       + (note ? note.fullNoteFilePath : "n/a"));
+            if (note && note.fullNoteFilePath) {
+                notesDir = note.fullNoteFilePath.replace(/[\/\\][^\/\\]+$/, "");
+                return;
+            }
+        } catch (e) {
+            script.log("zettelkasten: currentNote() error: " + e);
+        }
+
+        script.log("zettelkasten: could not resolve notes directory");
+    }
+
+    // ── Backlink repair ───────────────────────────────────────────────────────
+
+    // When a note is opened, find all notes that link to its ZK ID with a
+    // stale filename and rewrite those links to use the current filename.
+    function repairBacklinksFor(note) {
+        if (!note || !note.fileName || !notesDir) return;
+
+        var zkId = extractId(note.fileName);
+        if (!zkId) zkId = extractId(note.noteText);
+        if (!zkId) return;
+
+        var currentTarget = noteLinkTarget(note);
+
+        // Fetch notes that contain the literal string "|zkId]]"
+        var candidates = script.fetchNoteIdsByNoteTextPart("|" + zkId + "]]");
+
+        var pattern = new RegExp(
+            "\\[\\[([^\\]|]*)\\|" + regEscape(zkId) + "\\]\\]", "g"
+        );
+
+        for (var i = 0; i < candidates.length; i++) {
+            var n = script.fetchNoteById(candidates[i]);
+            if (!n || !n.noteText) continue;
+
+            var changed = false;
+            var newText = n.noteText.replace(pattern, function(match, oldTarget) {
+                if (oldTarget === currentTarget) return match;
+                changed = true;
+                return "[[" + currentTarget + "|" + zkId + "]]";
+            });
+
+            if (changed) {
+                script.writeToFile(notesDir + "/" + n.fileName, newText, false);
+                script.log("zettelkasten: repaired backlink in \"" + n.fileName
+                           + "\" → [[" + currentTarget + "|" + zkId + "]]");
+            }
+        }
+    }
+
+    // Full vault scan: build an id→currentTarget map, then rewrite every
+    // [[staleTarget|id]] in every note.
+    function repairAllLinks() {
+        resolveNotesDir();
+        if (!notesDir) {
+            script.informationMessageBox(
+                "Notes directory not available.\nPlease open a note first.", "Zettelkasten");
+            return;
+        }
+
+        var allIds = script.fetchNoteIdsByNoteTextPart("");
+
+        // Build zkId → correct link target
+        var idMap = {};
+        for (var i = 0; i < allIds.length; i++) {
+            var note = script.fetchNoteById(allIds[i]);
+            if (!note || !note.fileName) continue;
+            var zkId = extractId(note.fileName);
+            if (!zkId) zkId = extractId(note.noteText);
+            if (!zkId) continue;
+            idMap[zkId] = noteLinkTarget(note);
+        }
+
+        var pattern = /\[\[([^\]|]*)\|([^\]]*)\]\]/g;
+        var repairedLinks = 0;
+        var repairedNotes = 0;
+
+        for (var j = 0; j < allIds.length; j++) {
+            var n = script.fetchNoteById(allIds[j]);
+            if (!n || !n.noteText) continue;
+
+            var changed = false;
+            var newText = n.noteText.replace(pattern, function(match, linkTarget, linkId) {
+                var correct = idMap[linkId];
+                if (!correct || correct === linkTarget) return match;
+                changed = true;
+                repairedLinks++;
+                return "[[" + correct + "|" + linkId + "]]";
+            });
+
+            if (changed) {
+                script.writeToFile(notesDir + "/" + n.fileName, newText, false);
+                repairedNotes++;
+            }
+        }
+
+        script.informationMessageBox(
+            repairedLinks > 0
+                ? "Repaired " + repairedLinks + " link(s) in " + repairedNotes + " note(s)."
+                : "All Zettelkasten links are up to date.",
+            "Zettelkasten"
+        );
+    }
+
     // ── Actions ───────────────────────────────────────────────────────────────
 
     function insertZkId() {
@@ -96,14 +260,9 @@ Script {
             if (!zkId) zkId = extractId(note.noteText);
             if (!zkId) continue;
 
-            // Strip .txt extension — QOwnNotes wiki-links don't resolve it
-            var linkTarget = /\.txt$/i.test(note.fileName)
-                ? note.fileName.slice(0, note.fileName.length - 4)
-                : note.fileName;
-
             entries.push({
                 label:      zkId + "  —  " + note.name,
-                linkTarget: linkTarget,
+                linkTarget: noteLinkTarget(note),
                 zkId:       zkId
             });
         }
