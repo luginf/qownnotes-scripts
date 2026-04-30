@@ -1,10 +1,10 @@
 {
   "name": "Zettelkasten",
-  "identifier": "luginf-zettelkasten",
+  "identifier": "zettelkasten",
   "version": "0.2.0",
   "script": "zettelkasten.qml",
-  "authors": ["alan"],
+  "authors": ["@luginf"],
   "platforms": ["linux", "macos", "windows"],
-  "minAppVersion": "22.12.0",
+  "minAppVersion": "26.4.11",
   "description": "Zettelkasten support: generates 14-digit timestamp IDs and inserts [[filename|ID]] wiki-links to notes detected by a configurable ECMAScript ID pattern."
 }
