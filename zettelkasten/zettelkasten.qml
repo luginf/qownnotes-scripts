@@ -33,18 +33,18 @@ Script {
 
     property variant settingsVariables: [
         {
-            "identifier": "idRegex",
-            "name": "ID detection pattern (ECMAScript regex)",
-            "description": "Pattern used to detect Zettelkasten IDs in note filenames and content.\nDefault matches 14-digit timestamps: \\d{14}",
-            "type": "string",
-            "default": "\\d{14}"
-        },
-        {
             "identifier": "idFormat",
             "name": "ID generation format",
             "description": "Format string for generating new IDs.\nTokens: %Y=year  %M=month  %D=day  %h=hour  %m=minute  %s=second\nLiteral characters are kept as-is.\n\nExamples:\n  %Y%M%D%h%m%s        →  20260430143012\n  id%Y%M%Dx%h%m%s     →  id20260430x143012\n  %Y-%M-%D            →  2026-04-30",
             "type": "string",
             "default": "%Y%M%D%h%m%s"
+        },
+        {
+            "identifier": "idRegex",
+            "name": "ID detection pattern (ECMAScript regex)",
+            "description": "Pattern used to detect Zettelkasten IDs in note filenames and content.\nDefault matches 14-digit timestamps: \\d{14}",
+            "type": "string",
+            "default": "\\d{14}"
         },
         {
             "identifier": "autoRepairLinks",
