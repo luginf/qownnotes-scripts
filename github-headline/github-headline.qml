@@ -605,8 +605,8 @@ QtObject {
                 headline = entityToHtml(headline.trim());
                 script.log("Found headline: " + headline);
 
-                // generate markdown to paste
-                var result = "## " + headline + "\n- <" + text + ">\n";
+                // generate Markdown to paste
+                var result = "## " + headline + "\n\n- <" + text + ">\n";
                 return result;
             }
 
