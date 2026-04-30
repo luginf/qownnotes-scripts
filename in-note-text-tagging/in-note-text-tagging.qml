@@ -6,10 +6,10 @@ import QOwnNotesTypes 1.0
  * #tag1 #tag2 #tag3 #tag4
  * @tag_one would tag the note with "tag one" tag.
  * One or both markers can be enabled independently via the settings.
- *  - The two checkboxes are independent — you can enable # alone, @ alone, both, or freely change the characters       
+ *  - The two checkboxes are independent — you can enable # alone, @ alone, both, or freely change the characters
  * - If both are disabled, no tags are detected (clean empty return)
- * - maxTagLength = 0 disables the limit → * quantifier in the regex                                                   
- * - maxTagLength = 32 → {0,31} quantifier (1 mandatory letter + 31 more = 32 total)                                   
+ * - maxTagLength = 0 disables the limit → * quantifier in the regex
+ * - maxTagLength = 32 → {0,31} quantifier (1 mandatory letter + 31 more = 32 total)
  * - The tagBodyQuantifier() function computes the correct quantifier on each call
 
  */
@@ -74,22 +74,26 @@ Script {
     // Returns an array of currently active tag markers
     function allMarkers() {
         var markers = [];
-        if (useMarker1 && tagMarker) markers.push(tagMarker);
-        if (useMarker2 && tagMarker2) markers.push(tagMarker2);
+        if (useMarker1 && tagMarker)
+            markers.push(tagMarker);
+        if (useMarker2 && tagMarker2)
+            markers.push(tagMarker2);
         return markers;
     }
 
     // Returns a regex alternation string matching any active marker, or null if none active
     function markerPattern() {
         var markers = allMarkers();
-        if (markers.length === 0) return null;
+        if (markers.length === 0)
+            return null;
         return "(?:" + markers.map(escapeRegExp).join("|") + ")";
     }
 
     // Returns the quantifier for tag body chars based on maxTagLength setting.
     // First letter is always required; this governs the *remaining* characters.
     function tagBodyQuantifier() {
-        if (maxTagLength > 0) return "{0," + (maxTagLength - 1) + "}";
+        if (maxTagLength > 0)
+            return "{0," + (maxTagLength - 1) + "}";
         return "*";
     }
 
@@ -98,7 +102,8 @@ Script {
      */
     function autocompletionHook() {
         var pattern = markerPattern();
-        if (!pattern) return [];
+        if (!pattern)
+            return [];
 
         // get the current word plus non-word-characters before the word to also get the tag marker
         var word = script.noteTextEditCurrentWord(true);
@@ -158,7 +163,8 @@ Script {
      */
     function noteTaggingHook(note, action, tagName, newTagName) {
         var pattern = markerPattern();
-        if (!pattern) return action === "list" ? [] : "";
+        if (!pattern)
+            return action === "list" ? [] : "";
 
         var noteText = note.noteText;
         // Match a specific known tag with any active marker.
@@ -231,29 +237,23 @@ Script {
             // a letter (including accented/Unicode) as first char.
             // Max length is controlled by tagBodyQuantifier().
             var excludedChars = allMarkers().map(escapeRegExp).join("");
-            var re = new RegExp(
-                "(?:^|\\s)" + pattern +
-                "([a-zA-Z" +
-                "\\u00C0-\\u024F" +   // Latin Extended A+B
-                "\\u0250-\\u02AF" +   // IPA Extensions
-                "\\u0370-\\u03FF" +   // Greek and Coptic
-                "\\u0400-\\u052F" +   // Cyrillic + Supplement
-                "\\u0530-\\u058F" +   // Armenian
-                "\\u05D0-\\u05FF" +   // Hebrew
-                "\\u0600-\\u06FF" +   // Arabic
-                "\\u0900-\\u0D7F" +   // Indic (Devanagari, Bengali, Gurmukhi, Gujarati, Oriya, Tamil, Telugu, Kannada, Malayalam)
-                "\\u0E00-\\u0EFF" +   // Thai and Lao
-                "\\u10A0-\\u10FF" +   // Georgian
-                "\\u1200-\\u137F" +   // Ethiopic
-                "\\u1E00-\\u1FFF" +   // Latin Extended Additional + Greek Extended
-                "\\u3040-\\u30FF" +   // Hiragana + Katakana
-                "\\u3400-\\u4DBF" +   // CJK Extension A
-                "\\u4E00-\\u9FFF" +   // CJK Unified Ideographs
-                "\\uAC00-\\uD7AF" +   // Hangul Syllables
-                "]" +
-                "[^\\s,;" + excludedChars + "]" + tagBodyQuantifier() + ")",
-                "gim"
-            ), result, tagNameList = [];
+            var re = new RegExp("(?:^|\\s)" + pattern + "([a-zA-Z" + "\\u00C0-\\u024F" +   // Latin Extended A+B
+            "\\u0250-\\u02AF" +   // IPA Extensions
+            "\\u0370-\\u03FF" +   // Greek and Coptic
+            "\\u0400-\\u052F" +   // Cyrillic + Supplement
+            "\\u0530-\\u058F" +   // Armenian
+            "\\u05D0-\\u05FF" +   // Hebrew
+            "\\u0600-\\u06FF" +   // Arabic
+            "\\u0900-\\u0D7F" +   // Indic (Devanagari, Bengali, Gurmukhi, Gujarati, Oriya, Tamil, Telugu, Kannada, Malayalam)
+            "\\u0E00-\\u0EFF" +   // Thai and Lao
+            "\\u10A0-\\u10FF" +   // Georgian
+            "\\u1200-\\u137F" +   // Ethiopic
+            "\\u1E00-\\u1FFF" +   // Latin Extended Additional + Greek Extended
+            "\\u3040-\\u30FF" +   // Hiragana + Katakana
+            "\\u3400-\\u4DBF" +   // CJK Extension A
+            "\\u4E00-\\u9FFF" +   // CJK Unified Ideographs
+            "\\uAC00-\\uD7AF" +   // Hangul Syllables
+            "]" + "[^\\s,;" + excludedChars + "]" + tagBodyQuantifier() + ")", "gim"), result, tagNameList = [];
 
             while ((result = re.exec(noteText)) !== null) {
                 tagName = result[1].replace(/_/g, " ");

@@ -35,20 +35,38 @@ var markdownitTxt2tags;
       md.block.ruler.disable("lheading");
     }
 
-
     // ── Override text rule to also stop at / (needed for //italic//) ─────────
     // markdown-it's built-in text rule stops at isTerminatorChar characters.
     // '/' (0x2F) is not in that set, so '//italic//' gets consumed as plain
     // text before the italic inline rule can match it.
     function isTerminatorCharExtended(ch) {
       // 0x2F = '/' — added for txt2tags //italic//
-      if (ch === 0x2F) return true;
+      if (ch === 0x2f) return true;
       // Replicate markdown-it's isTerminatorChar exactly (v8.4.2)
       switch (ch) {
-        case 0x0a: case 0x21: case 0x23: case 0x24: case 0x25: case 0x26:
-        case 0x2a: case 0x2b: case 0x2d: case 0x3a: case 0x3c: case 0x3d:
-        case 0x3e: case 0x40: case 0x5b: case 0x5c: case 0x5d: case 0x5e:
-        case 0x5f: case 0x60: case 0x7b: case 0x7d: case 0x7e:
+        case 0x0a:
+        case 0x21:
+        case 0x23:
+        case 0x24:
+        case 0x25:
+        case 0x26:
+        case 0x2a:
+        case 0x2b:
+        case 0x2d:
+        case 0x3a:
+        case 0x3c:
+        case 0x3d:
+        case 0x3e:
+        case 0x40:
+        case 0x5b:
+        case 0x5c:
+        case 0x5d:
+        case 0x5e:
+        case 0x5f:
+        case 0x60:
+        case 0x7b:
+        case 0x7d:
+        case 0x7e:
           return true;
         default:
           return false;
@@ -56,7 +74,10 @@ var markdownitTxt2tags;
     }
     md.inline.ruler.at("text", function (state, silent) {
       var pos = state.pos;
-      while (pos < state.posMax && !isTerminatorCharExtended(state.src.charCodeAt(pos))) {
+      while (
+        pos < state.posMax &&
+        !isTerminatorCharExtended(state.src.charCodeAt(pos))
+      ) {
         pos++;
       }
       if (pos === state.pos) return false;
@@ -104,7 +125,7 @@ var markdownitTxt2tags;
 
         state.line = startLine + 1;
         return true;
-      }
+      },
     );
 
     // ── Block: % comments ────────────────────────────────────────────────────
@@ -120,7 +141,7 @@ var markdownitTxt2tags;
         state.line = startLine + 1;
         return true;
       },
-      { alt: ["paragraph"] }
+      { alt: ["paragraph"] },
     );
 
     // ── Block: + numbered list ───────────────────────────────────────────────
@@ -131,16 +152,22 @@ var markdownitTxt2tags;
       "txt2tags_ordered_list",
       function (state, startLine, endLine, silent) {
         var pos = state.bMarks[startLine] + state.tShift[startLine];
-        if (state.src.charCodeAt(pos) !== 0x2B /* + */ ||
-            state.src.charCodeAt(pos + 1) !== 0x20 /* space */) return false;
+        if (
+          state.src.charCodeAt(pos) !== 0x2b /* + */ ||
+          state.src.charCodeAt(pos + 1) !== 0x20 /* space */
+        )
+          return false;
         if (silent) return true;
 
         var items = [];
         var line = startLine;
         while (line < endLine) {
           pos = state.bMarks[line] + state.tShift[line];
-          if (state.src.charCodeAt(pos) !== 0x2B ||
-              state.src.charCodeAt(pos + 1) !== 0x20) break;
+          if (
+            state.src.charCodeAt(pos) !== 0x2b ||
+            state.src.charCodeAt(pos + 1) !== 0x20
+          )
+            break;
           items.push(state.src.slice(pos + 2, state.eMarks[line]));
           line++;
         }
@@ -165,30 +192,28 @@ var markdownitTxt2tags;
         state.push("ordered_list_close", "ol", -1).markup = "+";
         state.line = line;
         return true;
-      }
+      },
     );
 
     // ── Inline: //italic// ───────────────────────────────────────────────────
     // Avoid matching inside URLs (e.g. http://)
-    md.inline.ruler.push(
-      "txt2tags_italic",
-      function (state, silent) {
-        var pos = state.pos;
-        var src = state.src;
-        if (src.charCodeAt(pos) !== 0x2F || src.charCodeAt(pos + 1) !== 0x2F) return false;
-        if (pos > 0 && src.charCodeAt(pos - 1) === 0x3A /* : */) return false;
-        var start = pos + 2;
-        var end = src.indexOf("//", start);
-        if (end < 0 || end === start) return false;
-        if (!silent) {
-          state.push("em_open", "em", 1).markup = "//";
-          state.push("text", "", 0).content = src.slice(start, end);
-          state.push("em_close", "em", -1).markup = "//";
-        }
-        state.pos = end + 2;
-        return true;
+    md.inline.ruler.push("txt2tags_italic", function (state, silent) {
+      var pos = state.pos;
+      var src = state.src;
+      if (src.charCodeAt(pos) !== 0x2f || src.charCodeAt(pos + 1) !== 0x2f)
+        return false;
+      if (pos > 0 && src.charCodeAt(pos - 1) === 0x3a /* : */) return false;
+      var start = pos + 2;
+      var end = src.indexOf("//", start);
+      if (end < 0 || end === start) return false;
+      if (!silent) {
+        state.push("em_open", "em", 1).markup = "//";
+        state.push("text", "", 0).content = src.slice(start, end);
+        state.push("em_close", "em", -1).markup = "//";
       }
-    );
+      state.pos = end + 2;
+      return true;
+    });
 
     // ── Inline: __underline__ ────────────────────────────────────────────────
     // Registered BEFORE 'emphasis' so that __ is consumed here instead of
@@ -199,7 +224,8 @@ var markdownitTxt2tags;
       function (state, silent) {
         var pos = state.pos;
         var src = state.src;
-        if (src.charCodeAt(pos) !== 0x5F || src.charCodeAt(pos + 1) !== 0x5F) return false;
+        if (src.charCodeAt(pos) !== 0x5f || src.charCodeAt(pos + 1) !== 0x5f)
+          return false;
         var start = pos + 2;
         var end = src.indexOf("__", start);
         if (end < 0 || end === start) return false;
@@ -210,46 +236,42 @@ var markdownitTxt2tags;
         }
         state.pos = end + 2;
         return true;
-      }
+      },
     );
 
     // ── Inline: [label url] links ────────────────────────────────────────────
     // Registered BEFORE 'link' so markdown-it's own link rule doesn't consume [.
     // If the content matches [text](url) (standard markdown), we let the link
     // rule handle it by returning false when a '(' immediately follows ']'.
-    md.inline.ruler.before(
-      "link",
-      "txt2tags_link",
-      function (state, silent) {
-        var pos = state.pos;
-        var src = state.src;
-        if (src.charCodeAt(pos) !== 0x5B /* [ */) return false;
-        var closePos = src.indexOf("]", pos + 1);
-        if (closePos < 0) return false;
-        // Let standard markdown [text](url) pass through
-        if (src.charCodeAt(closePos + 1) === 0x28 /* ( */) return false;
-        var content = src.slice(pos + 1, closePos);
-        // Last space separates label from URL
-        var lastSpace = content.lastIndexOf(" ");
-        if (lastSpace < 0) return false;
-        var label = content.slice(0, lastSpace);
-        var url = content.slice(lastSpace + 1);
-        if (!label || !url) return false;
-        // URL must start with a recognised scheme or /
-        if (!/^[a-zA-Z][\w+\-.]*:\/\/|^\//.test(url)) return false;
-        if (!md.validateLink(url)) return false;
-        var normalizedUrl = md.normalizeLink(url);
-        if (!silent) {
-          var token = state.push("link_open", "a", 1);
-          token.attrs = [["href", normalizedUrl]];
-          token.markup = "txt2tags";
-          state.push("text", "", 0).content = label;
-          state.push("link_close", "a", -1).markup = "txt2tags";
-        }
-        state.pos = closePos + 1;
-        return true;
+    md.inline.ruler.before("link", "txt2tags_link", function (state, silent) {
+      var pos = state.pos;
+      var src = state.src;
+      if (src.charCodeAt(pos) !== 0x5b /* [ */) return false;
+      var closePos = src.indexOf("]", pos + 1);
+      if (closePos < 0) return false;
+      // Let standard markdown [text](url) pass through
+      if (src.charCodeAt(closePos + 1) === 0x28 /* ( */) return false;
+      var content = src.slice(pos + 1, closePos);
+      // Last space separates label from URL
+      var lastSpace = content.lastIndexOf(" ");
+      if (lastSpace < 0) return false;
+      var label = content.slice(0, lastSpace);
+      var url = content.slice(lastSpace + 1);
+      if (!label || !url) return false;
+      // URL must start with a recognised scheme or /
+      if (!/^[a-zA-Z][\w+\-.]*:\/\/|^\//.test(url)) return false;
+      if (!md.validateLink(url)) return false;
+      var normalizedUrl = md.normalizeLink(url);
+      if (!silent) {
+        var token = state.push("link_open", "a", 1);
+        token.attrs = [["href", normalizedUrl]];
+        token.markup = "txt2tags";
+        state.push("text", "", 0).content = label;
+        state.push("link_close", "a", -1).markup = "txt2tags";
       }
-    );
+      state.pos = closePos + 1;
+      return true;
+    });
 
     // ── Inline: bare URLs ────────────────────────────────────────────────────
     // Matches scheme://... URLs that appear without brackets.
@@ -279,7 +301,7 @@ var markdownitTxt2tags;
         }
         state.pos = pos + url.length;
         return true;
-      }
+      },
     );
 
     // ── Inline: [[wikilink]] and [[wikilink|description]] ────────────────────
@@ -292,7 +314,8 @@ var markdownitTxt2tags;
         var pos = state.pos;
         var src = state.src;
         // Must start with [[
-        if (src.charCodeAt(pos) !== 0x5B || src.charCodeAt(pos + 1) !== 0x5B) return false;
+        if (src.charCodeAt(pos) !== 0x5b || src.charCodeAt(pos + 1) !== 0x5b)
+          return false;
         var closePos = src.indexOf("]]", pos + 2);
         if (closePos < 0) return false;
         var content = src.slice(pos + 2, closePos);
@@ -302,14 +325,14 @@ var markdownitTxt2tags;
         var target, label;
         if (pipePos >= 0) {
           target = content.slice(0, pipePos);
-          label  = content.slice(pipePos + 1);
+          label = content.slice(pipePos + 1);
         } else {
           target = content;
-          label  = content;
+          label = content;
         }
         if (!target) return false;
         // Append .md so the QOwnNotes hook resolves to a note file path
-        var href = /\.md$/i.test(target) ? target : (target + ".md");
+        var href = /\.md$/i.test(target) ? target : target + ".md";
         if (!silent) {
           var token = state.push("link_open", "a", 1);
           token.attrs = [["href", href]];
@@ -319,28 +342,26 @@ var markdownitTxt2tags;
         }
         state.pos = closePos + 2;
         return true;
-      }
+      },
     );
 
     // ── Inline: --strikethrough-- ─────────────────────────────────────────────
-    md.inline.ruler.push(
-      "txt2tags_strike",
-      function (state, silent) {
-        var pos = state.pos;
-        var src = state.src;
-        if (src.charCodeAt(pos) !== 0x2D || src.charCodeAt(pos + 1) !== 0x2D) return false;
-        var start = pos + 2;
-        var end = src.indexOf("--", start);
-        if (end < 0 || end === start) return false;
-        if (!silent) {
-          state.push("txt2tags_s_open", "del", 1);
-          state.push("text", "", 0).content = src.slice(start, end);
-          state.push("txt2tags_s_close", "del", -1);
-        }
-        state.pos = end + 2;
-        return true;
+    md.inline.ruler.push("txt2tags_strike", function (state, silent) {
+      var pos = state.pos;
+      var src = state.src;
+      if (src.charCodeAt(pos) !== 0x2d || src.charCodeAt(pos + 1) !== 0x2d)
+        return false;
+      var start = pos + 2;
+      var end = src.indexOf("--", start);
+      if (end < 0 || end === start) return false;
+      if (!silent) {
+        state.push("txt2tags_s_open", "del", 1);
+        state.push("text", "", 0).content = src.slice(start, end);
+        state.push("txt2tags_s_close", "del", -1);
       }
-    );
+      state.pos = end + 2;
+      return true;
+    });
   }
 
   return txt2tagsPlugin;

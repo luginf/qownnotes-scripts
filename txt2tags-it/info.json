@@ -2,10 +2,7 @@
   "name": "txt2tags-it",
   "identifier": "txt2tags-it",
   "script": "txt2tags-it.qml",
-  "resources": [
-    "markdown-it.js",
-    "markdown-it-txt2tags.js"
-  ],
+  "resources": ["markdown-it.js", "markdown-it-txt2tags.js"],
   "authors": ["@luginf"],
   "version": "0.1",
   "minAppVersion": "26.4.11",

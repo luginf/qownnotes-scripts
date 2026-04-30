@@ -55,33 +55,35 @@ QtObject {
         md = new MarkdownIt.markdownit(optionsObj);
 
         if (useTxt2tagsPlugin)
-            md.use(MarkdownItTxt2tags.markdownitTxt2tags, { useSetextHeadings: useSetextHeadings });
+            md.use(MarkdownItTxt2tags.markdownitTxt2tags, {
+                useSetextHeadings: useSetextHeadings
+            });
 
         if (useTxt2tagsPlugin) {
-            script.registerCustomAction("txt2tags-italic",        qsTr("Italic (txt2tags)"),        qsTr("Italic"),        "format-text-italic",        true, false, false);
-            script.registerCustomAction("txt2tags-strikethrough", qsTr("Strikethrough (txt2tags)"), qsTr("Strike"),        "format-text-strikethrough", true, false, false);
-            script.registerCustomAction("txt2tags-underline",     qsTr("Underline (txt2tags)"),     qsTr("Underline"),     "format-text-underline",     true, false, false);
-            script.registerCustomAction("txt2tags-h1",            qsTr("Heading 1 (txt2tags)"),     qsTr("H1"),            "format-text-header",        true, false, false);
-            script.registerCustomAction("txt2tags-h2",            qsTr("Heading 2 (txt2tags)"),     qsTr("H2"),            "format-text-header",        true, false, false);
-            script.registerCustomAction("txt2tags-h3",            qsTr("Heading 3 (txt2tags)"),     qsTr("H3"),            "format-text-header",        true, false, false);
+            script.registerCustomAction("txt2tags-italic", qsTr("Italic (txt2tags)"), qsTr("Italic"), "format-text-italic", true, false, false);
+            script.registerCustomAction("txt2tags-strikethrough", qsTr("Strikethrough (txt2tags)"), qsTr("Strike"), "format-text-strikethrough", true, false, false);
+            script.registerCustomAction("txt2tags-underline", qsTr("Underline (txt2tags)"), qsTr("Underline"), "format-text-underline", true, false, false);
+            script.registerCustomAction("txt2tags-h1", qsTr("Heading 1 (txt2tags)"), qsTr("H1"), "format-text-header", true, false, false);
+            script.registerCustomAction("txt2tags-h2", qsTr("Heading 2 (txt2tags)"), qsTr("H2"), "format-text-header", true, false, false);
+            script.registerCustomAction("txt2tags-h3", qsTr("Heading 3 (txt2tags)"), qsTr("H3"), "format-text-header", true, false, false);
         }
 
         if (useTxt2tagsPlugin && useEditorHighlighting) {
             // Headings: = H1 =  == H2 ==  …
-            script.addHighlightingRule("^= +.+? +=\\s*$",         "=", 12);
-            script.addHighlightingRule("^== +.+? +==\\s*$",       "=", 13);
-            script.addHighlightingRule("^=== +.+? +===\\s*$",     "=", 14);
-            script.addHighlightingRule("^==== +.+? +====\\s*$",   "=", 15);
+            script.addHighlightingRule("^= +.+? +=\\s*$", "=", 12);
+            script.addHighlightingRule("^== +.+? +==\\s*$", "=", 13);
+            script.addHighlightingRule("^=== +.+? +===\\s*$", "=", 14);
+            script.addHighlightingRule("^==== +.+? +====\\s*$", "=", 15);
             script.addHighlightingRule("^===== +.+? +=====\\s*$", "=", 16);
             // Inline: //italic//  __underline__  --strikethrough--
-            script.addHighlightingRule("//.+?//",  "//", 7);
-            script.addHighlightingRule("__.+?__",  "__", 31);
-            script.addHighlightingRule("--.+?--", "--", -1, 0, 0,
-                { foregroundColor: "#888888" });
+            script.addHighlightingRule("//.+?//", "//", 7);
+            script.addHighlightingRule("__.+?__", "__", 31);
+            script.addHighlightingRule("--.+?--", "--", -1, 0, 0, {
+                foregroundColor: "#888888"
+            });
             // Comment: % until end of line
             script.addHighlightingRule("^%.*$", "%", 11);
         }
-
 
         //Allow file:// url scheme
         var validateLinkOrig = md.validateLink;
@@ -113,13 +115,15 @@ QtObject {
 
     function applyHeading(level) {
         var markers = "";
-        for (var i = 0; i < level; i++) markers += "=";
+        for (var i = 0; i < level; i++)
+            markers += "=";
 
         var noteText = script.currentNote().noteText;
         var pos = script.noteTextEditCursorPosition();
         var lineStart = noteText.lastIndexOf('\n', pos - 1) + 1;
         var lineEnd = noteText.indexOf('\n', pos);
-        if (lineEnd === -1) lineEnd = noteText.length;
+        if (lineEnd === -1)
+            lineEnd = noteText.length;
 
         var line = noteText.substring(lineStart, lineEnd);
 
@@ -129,9 +133,7 @@ QtObject {
 
         // Toggle off if already this heading level, otherwise apply
         var sameLevelRe = new RegExp("^" + markers + "\\s+.*?\\s+" + markers + "\\s*$");
-        var newLine = sameLevelRe.test(line)
-            ? content
-            : markers + " " + content + " " + markers;
+        var newLine = sameLevelRe.test(line) ? content : markers + " " + content + " " + markers;
 
         script.noteTextEditSetSelection(lineStart, lineEnd);
         script.noteTextEditWrite(newLine);
@@ -139,12 +141,24 @@ QtObject {
 
     function customActionInvoked(identifier) {
         switch (identifier) {
-            case "txt2tags-italic":        wrapInline("//"); break;
-            case "txt2tags-strikethrough": wrapInline("--"); break;
-            case "txt2tags-underline":     wrapInline("__"); break;
-            case "txt2tags-h1":            applyHeading(1);  break;
-            case "txt2tags-h2":            applyHeading(2);  break;
-            case "txt2tags-h3":            applyHeading(3);  break;
+        case "txt2tags-italic":
+            wrapInline("//");
+            break;
+        case "txt2tags-strikethrough":
+            wrapInline("--");
+            break;
+        case "txt2tags-underline":
+            wrapInline("__");
+            break;
+        case "txt2tags-h1":
+            applyHeading(1);
+            break;
+        case "txt2tags-h2":
+            applyHeading(2);
+            break;
+        case "txt2tags-h3":
+            applyHeading(3);
+            break;
         }
     }
 
