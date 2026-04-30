@@ -131,18 +131,37 @@ Script {
             return;
         }
 
-        var names = [];
-        for (var i = 0; i < snippets.length; i++) names.push(snippets[i].name);
-
-        var selected = script.inputDialogGetItem("Insert snippet", "Snippet:", names, 0, false);
-        if (!selected) return;
-
-        for (var j = 0; j < snippets.length; j++) {
-            if (snippets[j].name === selected) {
-                script.noteTextEditWrite(processPlaceholders(snippets[j].content));
-                return;
-            }
+        // Build entries with a preview (placeholders resolved at dialog-open time)
+        // and originalIndex so we can re-resolve at the moment of insertion.
+        var entries = [];
+        for (var i = 0; i < snippets.length; i++) {
+            entries.push({
+                name: snippets[i].name,
+                preview: processPlaceholders(snippets[i].content),
+                originalIndex: i
+            });
         }
+
+        var component = Qt.createComponent(Qt.resolvedUrl("InsertSnippetDialog.qml"));
+        if (component.status !== Component.Ready) {
+            script.log("snippets: failed to load InsertSnippetDialog — " + component.errorString());
+            return;
+        }
+        var dialog = component.createObject(null, { entries: entries });
+        if (!dialog) {
+            script.log("snippets: failed to instantiate InsertSnippetDialog");
+            return;
+        }
+        // Re-process placeholders at insertion time so timestamps are fresh.
+        dialog.snippetChosen.connect(function(originalIndex) {
+            script.noteTextEditWrite(processPlaceholders(snippets[originalIndex].content));
+        });
+        dialog.manageRequested.connect(function() {
+            manageSnippets();
+        });
+        dialog.show();
+        dialog.raise();
+        dialog.requestActivate();
     }
 
     function manageSnippets() {
