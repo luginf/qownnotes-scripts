@@ -120,7 +120,6 @@ Script {
         // Strategy 1: NoteFolder.localPath
         try {
             var folder = script.currentNoteFolder();
-            script.log("zettelkasten: currentNoteFolder=" + JSON.stringify(folder) + " localPath=" + (folder ? folder.localPath : "n/a"));
             if (folder && folder.localPath) {
                 notesDir = folder.localPath;
                 return;
@@ -132,7 +131,6 @@ Script {
         // Strategy 2: current note's full file path
         try {
             var note = script.currentNote();
-            script.log("zettelkasten: currentNote.fullNoteFilePath=" + (note ? note.fullNoteFilePath : "n/a"));
             if (note && note.fullNoteFilePath) {
                 notesDir = note.fullNoteFilePath.replace(/[\/\\][^\/\\]+$/, "");
                 return;
