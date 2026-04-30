@@ -22,9 +22,6 @@ Script {
     property string idFormat
     property bool autoRepairLinks: true
 
-    // Runtime state — not a user setting
-    property string notesDir: ""
-
     property variant settingsVariables: [
         {
             "identifier": "idFormat",
@@ -66,7 +63,6 @@ Script {
     }
 
     function noteOpenedHook(note) {
-        resolveNotesDir();
         if (autoRepairLinks !== false) {
             repairBacklinksFor(note);
         }
@@ -114,41 +110,12 @@ Script {
         return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     }
 
-    // Populate notesDir — tries several API approaches.
-    function resolveNotesDir() {
-        if (notesDir)
-            return;
-
-        // Strategy 1: NoteFolder.localPath
-        try {
-            var folder = script.currentNoteFolder();
-            if (folder && folder.localPath) {
-                notesDir = folder.localPath;
-                return;
-            }
-        } catch (e) {
-            script.log("zettelkasten: currentNoteFolder() error: " + e);
-        }
-
-        // Strategy 2: current note's full file path
-        try {
-            var note = script.currentNote();
-            if (note && note.fullNoteFilePath) {
-                notesDir = note.fullNoteFilePath.replace(/[\/\\][^\/\\]+$/, "");
-                return;
-            }
-        } catch (e) {
-            script.log("zettelkasten: currentNote() error: " + e);
-        }
-        script.log("zettelkasten: could not resolve notes directory");
-    }
-
     // ── Backlink repair ───────────────────────────────────────────────────────
 
     // When a note is opened, find all notes that link to its ZK ID with a
     // stale filename and rewrite those links to use the current filename.
     function repairBacklinksFor(note) {
-        if (!note || !note.fileName || !notesDir)
+        if (!note || !note.fileName)
             return;
         var zkId = extractId(note.fileName);
         if (!zkId)
@@ -162,7 +129,7 @@ Script {
         var pattern = new RegExp("\\[\\[([^\\]|]*)\\|" + regEscape(zkId) + "\\]\\]", "g");
         for (var i = 0; i < candidates.length; i++) {
             var n = script.fetchNoteById(candidates[i]);
-            if (!n || !n.noteText)
+            if (!n || !n.noteText || !n.fullNoteFilePath)
                 continue;
             var changed = false;
             var newText = n.noteText.replace(pattern, function (match, oldTarget) {
@@ -172,7 +139,7 @@ Script {
                 return "[[" + currentTarget + "|" + zkId + "]]";
             });
             if (changed) {
-                script.writeToFile(notesDir + "/" + n.fileName, newText);
+                script.writeToFile(n.fullNoteFilePath, newText);
                 script.log("zettelkasten: repaired backlink in \"" + n.fileName + "\" → [[" + currentTarget + "|" + zkId + "]]");
             }
         }
@@ -181,11 +148,6 @@ Script {
     // Full vault scan: build an id→currentTarget map, then rewrite every
     // [[staleTarget|id]] in every note.
     function repairAllLinks() {
-        resolveNotesDir();
-        if (!notesDir) {
-            script.informationMessageBox("Notes directory not available.\nPlease open a note first.", "Zettelkasten");
-            return;
-        }
         var allIds = script.fetchNoteIdsByNoteTextPart("");
 
         // Build zkId → correct link target
@@ -206,7 +168,7 @@ Script {
         var repairedNotes = 0;
         for (var j = 0; j < allIds.length; j++) {
             var n = script.fetchNoteById(allIds[j]);
-            if (!n || !n.noteText)
+            if (!n || !n.noteText || !n.fullNoteFilePath)
                 continue;
             var changed = false;
             var newText = n.noteText.replace(pattern, function (match, linkTarget, linkId) {
@@ -218,7 +180,7 @@ Script {
                 return "[[" + correct + "|" + linkId + "]]";
             });
             if (changed) {
-                script.writeToFile(notesDir + "/" + n.fileName, newText);
+                script.writeToFile(n.fullNoteFilePath, newText);
                 repairedNotes++;
             }
         }
