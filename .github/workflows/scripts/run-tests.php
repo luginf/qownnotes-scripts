@@ -84,6 +84,28 @@ class TestHelper
             $errors[] = "No version was entered!";
         }
 
+        // Check that extra .qml and .js files are listed in "resources"
+        $extraFiles = array_filter(
+            array_merge(glob($dir . "/*.qml"), glob($dir . "/*.js")),
+            function ($file) use ($dir, $script) {
+                return basename($file) !== $script;
+            }
+        );
+
+        if (count($extraFiles) > 0) {
+            $resources = $data["resources"] ?? [];
+            if (!is_array($resources)) {
+                $errors[] = "'resources' has to be an array!";
+            } else {
+                foreach ($extraFiles as $extraFile) {
+                    $basename = basename($extraFile);
+                    if (!in_array($basename, $resources)) {
+                        $errors[] = "File '$basename' is not listed in 'resources' in info.json!";
+                    }
+                }
+            }
+        }
+
         if (isset($data["platforms"])) {
             if (!is_array($data["platforms"])) {
                 $errors[] = "'platforms' has to be an array!";
