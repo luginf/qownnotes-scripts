@@ -4,10 +4,6 @@
     "name": "Reference"
   },
   {
-    "name": "test",
-    "content": "just a test "
-  },
-  {
     "content": "id$CURRENT_YEAR$CURRENT_MONTH$CURRENT_DATEx$CURRENT_HOUR$CURRENT_MINUTE$CURRENT_SECOND",
     "name": "Zettelkasten_id"
   }

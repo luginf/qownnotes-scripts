@@ -17,6 +17,7 @@ Window {
     property var items: []
     property bool updating: false
     property bool isDirty: false
+    property bool listDirty: false
     property bool showHelp: false
 
     readonly property int baseWidth: 720
@@ -183,7 +184,7 @@ Window {
                     var copy = items.slice();
                     copy.splice(idx, 1);
                     items = copy;
-                    snippetsSaved(items);
+                    listDirty = true;
                     var next = Math.min(idx, items.length - 1);
                     snippetList.currentIndex = next;
                     if (next >= 0)
@@ -355,7 +356,7 @@ Window {
         width: 76
         height: 26
         radius: 4
-        opacity: isDirty && editorEnabled ? 1.0 : 0.4
+        opacity: (isDirty && editorEnabled) || listDirty ? 1.0 : 0.4
         color: saveMouse.pressed ? "#15896b" : "#1cb27e"
 
         Text {
@@ -368,7 +369,7 @@ Window {
         MouseArea {
             id: saveMouse
             anchors.fill: parent
-            enabled: isDirty && editorEnabled
+            enabled: (isDirty && editorEnabled) || listDirty
             onClicked: saveCurrentItem()
         }
     }
@@ -506,16 +507,17 @@ Window {
 
     function saveCurrentItem() {
         var idx = snippetList.currentIndex;
-        if (idx < 0)
-            return;
-        var copy = items.slice();
-        copy[idx] = {
-            "name": nameInput.text,
-            "content": contentEdit.text
-        };
-        items = copy;
-        snippetList.currentIndex = idx;
+        if (idx >= 0) {
+            var copy = items.slice();
+            copy[idx] = {
+                "name": nameInput.text,
+                "content": contentEdit.text
+            };
+            items = copy;
+            snippetList.currentIndex = idx;
+        }
         isDirty = false;
+        listDirty = false;
         snippetsSaved(items);
     }
 }

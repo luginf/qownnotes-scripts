@@ -42,9 +42,9 @@ Placeholders are replaced at insertion time.
 
 ## Zettelkasten integration
 
-`$ZK_ID` generates a Zettelkasten ID using the same format string syntax as the
-[Zettelkasten extension](../zettelkasten/). Configure **Zettelkasten ID format**
-in _Settings → Scripting → Text Snippets_ to match the format you use there.
+`$ZK_ID` generates a Zettelkasten ID using the format string syntax documented
+below. Configure **Zettelkasten ID format** in _Settings → Scripting → Text
+Snippets_ to match the token format you use for your Zettelkasten IDs.
 
 | Token | Value          |
 | ----- | -------------- |

@@ -75,7 +75,26 @@ Script {
             "windows": "Windows",
             "unix": "Unix"
         };
-        return text.replace(/\$CURRENT_YEAR_SHORT/g, String(now.getFullYear()).slice(-2)).replace(/\$CURRENT_YEAR/g, String(now.getFullYear())).replace(/\$CURRENT_MONTH_NAME_SHORT/g, loc.monthName(now.getMonth(), 1)).replace(/\$CURRENT_MONTH_NAME/g, loc.monthName(now.getMonth(), 0)).replace(/\$CURRENT_MONTH/g, pad(now.getMonth() + 1)).replace(/\$CURRENT_DATE/g, pad(now.getDate())).replace(/\$CURRENT_HOUR/g, pad(now.getHours())).replace(/\$CURRENT_MINUTE/g, pad(now.getMinutes())).replace(/\$CURRENT_SECOND/g, pad(now.getSeconds())).replace(/\$CURRENT_SECONDS_UNIX/g, String(Math.floor(now.getTime() / 1000))).replace(/\$UUID/g, generateUUID()).replace(/\$NOTE_TITLE/g, note ? note.name : "").replace(/\$NOTE_FILENAME/g, note ? note.fileName : "").replace(/\$OS_NAME/g, osMap[Qt.platform.os] || Qt.platform.os).replace(/\$ZK_ID/g, generateZkId());
+        var placeholders = {
+            "$CURRENT_SECONDS_UNIX": String(Math.floor(now.getTime() / 1000)),
+            "$CURRENT_YEAR_SHORT": String(now.getFullYear()).slice(-2),
+            "$CURRENT_YEAR": String(now.getFullYear()),
+            "$CURRENT_MONTH_NAME_SHORT": loc.monthName(now.getMonth(), 1),
+            "$CURRENT_MONTH_NAME": loc.monthName(now.getMonth(), 0),
+            "$CURRENT_MONTH": pad(now.getMonth() + 1),
+            "$CURRENT_DATE": pad(now.getDate()),
+            "$CURRENT_HOUR": pad(now.getHours()),
+            "$CURRENT_MINUTE": pad(now.getMinutes()),
+            "$CURRENT_SECOND": pad(now.getSeconds()),
+            "$UUID": generateUUID(),
+            "$NOTE_TITLE": note ? note.name : "",
+            "$NOTE_FILENAME": note ? note.fileName : "",
+            "$OS_NAME": osMap[Qt.platform.os] || Qt.platform.os,
+            "$ZK_ID": generateZkId()
+        };
+        return text.replace(/\$(?:CURRENT_SECONDS_UNIX|CURRENT_YEAR_SHORT|CURRENT_YEAR|CURRENT_MONTH_NAME_SHORT|CURRENT_MONTH_NAME|CURRENT_MONTH|CURRENT_DATE|CURRENT_HOUR|CURRENT_MINUTE|CURRENT_SECOND|UUID|NOTE_TITLE|NOTE_FILENAME|OS_NAME|ZK_ID)/g, function (match) {
+            return placeholders[match];
+        });
     }
 
     function snippetsFilePath() {
