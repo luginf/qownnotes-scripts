@@ -95,7 +95,7 @@ Script {
     }
 
     function saveSnippets(snippets) {
-        script.writeToFile(snippetsFilePath(), JSON.stringify(snippets, null, 2), false);
+        script.writeToFile(snippetsFilePath(), JSON.stringify(snippets, null, 2));
     }
 
     // ── Actions ───────────────────────────────────────────────────────────────
