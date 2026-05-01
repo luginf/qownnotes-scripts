@@ -92,16 +92,21 @@ class TestHelper
             }
         );
 
-        if (count($extraFiles) > 0) {
-            $resources = $data["resources"] ?? [];
-            if (!is_array($resources)) {
-                $errors[] = "'resources' has to be an array!";
-            } else {
-                foreach ($extraFiles as $extraFile) {
-                    $basename = basename($extraFile);
-                    if (!in_array($basename, $resources)) {
-                        $errors[] = "File '$basename' is not listed in 'resources' in info.json!";
-                    }
+        $resources = $data["resources"] ?? [];
+        if (!is_array($resources)) {
+            $errors[] = "'resources' has to be an array!";
+        } else {
+            foreach ($extraFiles as $extraFile) {
+                $basename = basename($extraFile);
+                if (!in_array($basename, $resources)) {
+                    $errors[] = "File '$basename' is not listed in 'resources' in info.json!";
+                }
+            }
+
+            // Check that every file listed in "resources" actually exists
+            foreach ($resources as $resource) {
+                if (!file_exists($dir . "/" . $resource)) {
+                    $errors[] = "Resource '$resource' listed in info.json doesn't exist!";
                 }
             }
         }
