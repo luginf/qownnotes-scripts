@@ -1,10 +1,21 @@
 import QtQml 2.0
+import QOwnNotesTypes 1.0
 
 /**
  * This script detects if a GitHub issue url is in the clipboard and downloads the page
  * so it can parse the headline from it to paste a markdown headline and a link
  */
 QtObject {
+    property int headingLevel
+    property variant settingsVariables: [
+        {
+            "identifier": "headingLevel",
+            "name": "Heading level for inserted headline",
+            "description": "Markdown heading level used for the inserted GitHub issue or pull request headline (1-6).",
+            "type": "integer",
+            "default": 3
+        }
+    ]
 
     /**
      * Replaces html entities to characters
@@ -559,6 +570,19 @@ QtObject {
             return string;
         }
     }
+
+    function markdownHeadingPrefix() {
+        var level = parseInt(headingLevel);
+
+        if (isNaN(level) || level < 1) {
+            level = 3;
+        } else if (level > 6) {
+            level = 6;
+        }
+
+        return new Array(level + 1).join("#");
+    }
+
     /**
      * This function is called when html or a media file is pasted to a note with `Ctrl + Shift + V`
      *
@@ -606,7 +630,7 @@ QtObject {
                 script.log("Found headline: " + headline);
 
                 // generate Markdown to paste
-                var result = "## " + headline + "\n\n- <" + text + ">\n";
+                var result = markdownHeadingPrefix() + " " + headline + "\n\n- <" + text + ">\n";
                 return result;
             }
 
