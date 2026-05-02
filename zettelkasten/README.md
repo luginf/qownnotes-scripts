@@ -74,4 +74,3 @@ All settings are accessible in _Settings → Scripting → Zettelkasten_:
 | ID generation format               | `%Y%M%D%h%m%s` | Format string for new IDs                                            |
 | ID detection pattern               | `\d{14}`       | ECMAScript regex to locate IDs in filenames and content              |
 | Auto-repair backlinks on note open | enabled        | Automatically fix stale backlinks when a note with a ZK ID is opened |
-
