@@ -8,6 +8,14 @@ In the Zettelkasten method, each note carries a **permanent unique ID** embedded
 
 This script implements that principle inside QOwnNotes using the native `[[filename|id]]` wiki-link format.
 
+## Usage
+
+- **Scripting › Insert Zettelkasten ID** —  Insert a new unique ZK ID at the cursor position   
+- **Scripting › insert Zettelkasten link** — Open a searchable dialog to pick a note and insert a `[[filename\|id]]` link
+- **Scripting › Repair Zettelkasten links** — can all notes and repair every link whose filename is out of date
+
+You can also link those actions to a custom shortcut.
+
 ## Link format
 
 ```
@@ -19,7 +27,7 @@ This script implements that principle inside QOwnNotes using the native `[[filen
 
 ## Actions
 
-Three toolbar buttons are registered:
+Three toolbar buttons are registered, following the custom actions listed above:
 
 | Button      | Action                                                                       |
 | ----------- | ---------------------------------------------------------------------------- |
