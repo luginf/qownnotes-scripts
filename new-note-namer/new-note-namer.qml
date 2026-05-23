@@ -49,8 +49,10 @@ QtObject {
 
     function handleNewNoteHeadlineHook(headline) {
         // 'headline' is a plain string (the search term or default text), not a Note object.
+        // Strip QOwnNotes search filter prefixes (e.g. "n:" for name-only search).
+        var cleaned = headline.replace(/^n:/i, "");
         // If already provided (search term or QOwnNotes own dialog), use it directly.
-        var name = headline !== "" ? headline : newNamer("New note", "New note title", "Title");
+        var name = cleaned !== "" ? cleaned : newNamer("New note", "New note title", "Title");
         return buildHeadline(name);
     }
     function buildHeadline(name) {
