@@ -11,10 +11,11 @@ Window {
     modality: Qt.ApplicationModal
     flags: Qt.Dialog | Qt.WindowCloseButtonHint
 
-    // entries: [{name, preview, originalIndex}]
+    // entries: [{name, preview, originalIndex, fileIndex, localIndex}]
     property var entries: []
+    property bool hasExtra: false
     signal snippetChosen(int index)
-    signal manageRequested
+    signal manageRequested(int fileIndex, int localIndex)
     property var filtered: []
 
     SystemPalette {
@@ -106,8 +107,11 @@ Window {
                 id: manageMouse
                 anchors.fill: parent
                 onClicked: {
-                    manageRequested();
-                    root.close();
+                    var idx = snippetList.currentIndex;
+                    var fi = (idx >= 0 && idx < filtered.length) ? (filtered[idx].fileIndex || 0) : 0;
+                    var li = (idx >= 0 && idx < filtered.length) ? (filtered[idx].localIndex || 0) : -1;
+                    manageRequested(fi, li);
+                    root.hide();
                 }
             }
         }
@@ -207,12 +211,27 @@ Window {
                     color: index === snippetList.currentIndex ? "#1cb27e" : (rowMouse.containsMouse ? "#e4f5ef" : "transparent")
                 }
 
+                // Source badge: colored dot for snippets from the extra file
+                Rectangle {
+                    visible: root.hasExtra && modelData.fileIndex === 1
+                    anchors {
+                        right: parent.right
+                        rightMargin: 6
+                        verticalCenter: parent.verticalCenter
+                    }
+                    width: 5
+                    height: 5
+                    radius: 3
+                    color: index === snippetList.currentIndex ? "white" : "#1cb27e"
+                }
+
                 Text {
                     anchors {
                         verticalCenter: parent.verticalCenter
                         left: parent.left
                         right: parent.right
-                        margins: 7
+                        leftMargin: 7
+                        rightMargin: root.hasExtra ? 16 : 7
                     }
                     text: modelData.name
                     color: index === snippetList.currentIndex ? "white" : pal.text

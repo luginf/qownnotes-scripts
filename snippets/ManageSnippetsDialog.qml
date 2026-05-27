@@ -11,24 +11,118 @@ Window {
     modality: Qt.ApplicationModal
     flags: Qt.Dialog | Qt.WindowCloseButtonHint
 
-    property var snippets: []
-    signal snippetsSaved(var updatedSnippets)
+    property var primarySnippets: []
+    property var extraSnippets: []
+    property string extraLabel: ""
+    property int initialTab: 0
+    property int initialSnippet: -1
+    signal snippetsSaved(var updatedSnippets, int fileIndex)
 
     property var items: []
     property bool updating: false
+    property bool _editorLoaded: false
     property bool isDirty: false
     property bool listDirty: false
     property bool showHelp: false
+    property int activeFile: 0
+    property var _tabItems: [[], []]
+    property var _tabListDirty: [false, false]
 
     readonly property int baseWidth: 720
-    readonly property int helpPanelWidth: 320
+    property real helpPanelWidth: 320
 
     SystemPalette {
         id: pal
     }
 
     Component.onCompleted: {
-        items = JSON.parse(JSON.stringify(snippets));
+        var pi = JSON.parse(JSON.stringify(primarySnippets));
+        var ei = JSON.parse(JSON.stringify(extraSnippets));
+        _tabItems = [pi, ei];
+        items = JSON.parse(JSON.stringify(pi));
+        if (initialTab === 1 && extraLabel !== "")
+            switchTab(1);
+        if (initialSnippet >= 0 && initialSnippet < items.length) {
+            snippetList.currentIndex = initialSnippet;
+            loadItem(initialSnippet);
+        }
+    }
+
+    // ── Tab bar ───────────────────────────────────────────────────────────────
+    Item {
+        id: tabBar
+        visible: extraLabel !== ""
+        anchors {
+            top: parent.top
+            topMargin: 10
+            left: parent.left
+            leftMargin: 10
+        }
+        width: 210
+        height: visible ? 26 : 0
+
+        Rectangle {
+            id: tab0Btn
+            anchors {
+                left: parent.left
+                top: parent.top
+                bottom: parent.bottom
+            }
+            width: 101
+            radius: 3
+            color: activeFile === 0 ? "#1cb27e" : (tab0Mouse.containsMouse ? pal.light : pal.button)
+            border.color: activeFile === 0 ? "#1cb27e" : pal.mid
+            border.width: 1
+
+            Text {
+                anchors.centerIn: parent
+                text: "Primary"
+                color: activeFile === 0 ? "white" : pal.buttonText
+                font.pixelSize: 12
+            }
+
+            MouseArea {
+                id: tab0Mouse
+                anchors.fill: parent
+                hoverEnabled: true
+                onClicked: switchTab(0)
+            }
+        }
+
+        Rectangle {
+            id: tab1Btn
+            anchors {
+                left: tab0Btn.right
+                leftMargin: 4
+                top: parent.top
+                bottom: parent.bottom
+                right: parent.right
+            }
+            radius: 3
+            color: activeFile === 1 ? "#1cb27e" : (tab1Mouse.containsMouse ? pal.light : pal.button)
+            border.color: activeFile === 1 ? "#1cb27e" : pal.mid
+            border.width: 1
+
+            Text {
+                anchors {
+                    fill: parent
+                    margins: 4
+                }
+                verticalAlignment: Text.AlignVCenter
+                horizontalAlignment: Text.AlignHCenter
+                text: extraLabel
+                color: activeFile === 1 ? "white" : pal.buttonText
+                font.pixelSize: 12
+                elide: Text.ElideRight
+            }
+
+            MouseArea {
+                id: tab1Mouse
+                anchors.fill: parent
+                hoverEnabled: true
+                onClicked: switchTab(1)
+            }
+        }
     }
 
     // ── Bottom bar ────────────────────────────────────────────────────────────
@@ -95,19 +189,19 @@ Window {
             MouseArea {
                 id: closeMouse
                 anchors.fill: parent
-                onClicked: root.close()
+                onClicked: confirmClose()
             }
         }
     }
 
     // ── Left panel: list ──────────────────────────────────────────────────────
 
-    // +/- buttons
+    // +/− ↑↓ buttons
     Item {
         id: listButtons
         anchors {
-            top: parent.top
-            topMargin: 10
+            top: tabBar.visible ? tabBar.bottom : parent.top
+            topMargin: tabBar.visible ? 6 : 10
             left: parent.left
             leftMargin: 10
         }
@@ -137,19 +231,7 @@ Window {
             MouseArea {
                 id: addMouse
                 anchors.fill: parent
-                onClicked: {
-                    var copy = items.slice();
-                    copy.push({
-                        "name": "New snippet",
-                        "content": ""
-                    });
-                    items = copy;
-                    var idx = items.length - 1;
-                    snippetList.currentIndex = idx;
-                    loadItem(idx);
-                    nameInput.selectAll();
-                    nameInput.forceActiveFocus();
-                }
+                onClicked: addSnippet()
             }
         }
 
@@ -179,19 +261,67 @@ Window {
                 id: removeMouse
                 anchors.fill: parent
                 enabled: snippetList.currentIndex >= 0
-                onClicked: {
-                    var idx = snippetList.currentIndex;
-                    var copy = items.slice();
-                    copy.splice(idx, 1);
-                    items = copy;
-                    listDirty = true;
-                    var next = Math.min(idx, items.length - 1);
-                    snippetList.currentIndex = next;
-                    if (next >= 0)
-                        loadItem(next);
-                    else
-                        clearEditor();
-                }
+                onClicked: removeSnippet(snippetList.currentIndex)
+            }
+        }
+
+        Rectangle {
+            id: moveUpBtn
+            anchors {
+                verticalCenter: parent.verticalCenter
+                left: removeBtn.right
+                leftMargin: 4
+            }
+            width: 32
+            height: 26
+            radius: 4
+            opacity: snippetList.currentIndex > 0 ? 1.0 : 0.4
+            color: moveUpMouse.pressed ? pal.dark : pal.button
+            border.color: pal.mid
+            border.width: 1
+
+            Text {
+                anchors.centerIn: parent
+                text: "↑"
+                color: pal.buttonText
+                font.pixelSize: 14
+            }
+
+            MouseArea {
+                id: moveUpMouse
+                anchors.fill: parent
+                enabled: snippetList.currentIndex > 0
+                onClicked: moveItem(snippetList.currentIndex, -1)
+            }
+        }
+
+        Rectangle {
+            id: moveDownBtn
+            anchors {
+                verticalCenter: parent.verticalCenter
+                left: moveUpBtn.right
+                leftMargin: 4
+            }
+            width: 32
+            height: 26
+            radius: 4
+            opacity: snippetList.currentIndex >= 0 && snippetList.currentIndex < items.length - 1 ? 1.0 : 0.4
+            color: moveDownMouse.pressed ? pal.dark : pal.button
+            border.color: pal.mid
+            border.width: 1
+
+            Text {
+                anchors.centerIn: parent
+                text: "↓"
+                color: pal.buttonText
+                font.pixelSize: 14
+            }
+
+            MouseArea {
+                id: moveDownMouse
+                anchors.fill: parent
+                enabled: snippetList.currentIndex >= 0 && snippetList.currentIndex < items.length - 1
+                onClicked: moveItem(snippetList.currentIndex, 1)
             }
         }
     }
@@ -224,6 +354,28 @@ Window {
             currentIndex: -1
             clip: true
             boundsBehavior: Flickable.StopAtBounds
+            focus: true
+
+            Keys.onDeletePressed: {
+                if (currentIndex >= 0)
+                    removeSnippet(currentIndex);
+            }
+            Keys.onPressed: function(event) {
+                if ((event.key === Qt.Key_Up) && (event.modifiers & Qt.ControlModifier)) {
+                    moveItem(currentIndex, -1);
+                    event.accepted = true;
+                } else if ((event.key === Qt.Key_Down) && (event.modifiers & Qt.ControlModifier)) {
+                    moveItem(currentIndex, 1);
+                    event.accepted = true;
+                } else if (event.key === Qt.Key_S && (event.modifiers & Qt.ControlModifier)) {
+                    if ((isDirty && editorEnabled) || listDirty)
+                        saveCurrentItem();
+                    event.accepted = true;
+                } else if (event.key === Qt.Key_N && (event.modifiers & Qt.ControlModifier)) {
+                    addSnippet();
+                    event.accepted = true;
+                }
+            }
 
             delegate: Item {
                 width: snippetList.width
@@ -252,8 +404,16 @@ Window {
                     anchors.fill: parent
                     hoverEnabled: true
                     onClicked: {
-                        snippetList.currentIndex = index;
-                        loadItem(index);
+                        var target = index;
+                        var curIdx = snippetList.currentIndex;
+                        if (_editorLoaded && curIdx >= 0 && target !== curIdx && curIdx < items.length &&
+                                (nameInput.text !== items[curIdx].name || contentEdit.text !== items[curIdx].content)) {
+                            var answer = script.questionMessageBox("\"" + nameInput.text + "\" has unsaved changes.\nDiscard and switch?", "Unsaved changes", 16384 | 65536, 65536);
+                            if (answer !== 16384)
+                                return;
+                        }
+                        snippetList.currentIndex = target;
+                        loadItem(target);
                     }
                 }
             }
@@ -328,6 +488,16 @@ Window {
                 if (!updating)
                     isDirty = true;
             }
+            Keys.onPressed: function(event) {
+                if (event.key === Qt.Key_S && (event.modifiers & Qt.ControlModifier)) {
+                    if ((isDirty && editorEnabled) || listDirty)
+                        saveCurrentItem();
+                    event.accepted = true;
+                } else if (event.key === Qt.Key_N && (event.modifiers & Qt.ControlModifier)) {
+                    addSnippet();
+                    event.accepted = true;
+                }
+            }
         }
     }
 
@@ -345,7 +515,7 @@ Window {
         font.pixelSize: 13
     }
 
-    // Save button
+    // Save button (Ctrl+S)
     Rectangle {
         id: saveBtn
         anchors {
@@ -419,6 +589,16 @@ Window {
                     if (!updating)
                         isDirty = true;
                 }
+                Keys.onPressed: function(event) {
+                    if (event.key === Qt.Key_S && (event.modifiers & Qt.ControlModifier)) {
+                        if ((isDirty && editorEnabled) || listDirty)
+                            saveCurrentItem();
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_N && (event.modifiers & Qt.ControlModifier)) {
+                        addSnippet();
+                        event.accepted = true;
+                    }
+                }
             }
         }
 
@@ -448,15 +628,41 @@ Window {
     Rectangle {
         id: helpSep
         visible: showHelp
-        width: 1
-        color: pal.mid
+        width: 8
+        color: "transparent"
+        // x computed from helpPanelWidth; no horizontal anchor so drag can update it
+        x: root.width - 10 - helpPanelWidth - 8 - width
         anchors {
             top: parent.top
             topMargin: 10
             bottom: bottomBar.top
             bottomMargin: 6
-            right: helpPanel.left
-            rightMargin: 8
+        }
+
+        Rectangle {
+            anchors.centerIn: parent
+            width: 1
+            height: parent.height
+            color: sepMouse.containsMouse || sepMouse.pressed ? "#1cb27e" : pal.mid
+        }
+
+        MouseArea {
+            id: sepMouse
+            anchors.fill: parent
+            cursorShape: Qt.SplitHCursor
+            hoverEnabled: true
+            property real pressGlobalX: 0
+            property real pressHelpWidth: 0
+            onPressed: {
+                pressGlobalX = mapToItem(null, mouseX, 0).x;
+                pressHelpWidth = helpPanelWidth;
+            }
+            onPositionChanged: {
+                if (pressed) {
+                    var delta = mapToItem(null, mouseX, 0).x - pressGlobalX;
+                    helpPanelWidth = Math.max(150, Math.min(root.width - 430, pressHelpWidth - delta));
+                }
+            }
         }
     }
 
@@ -482,11 +688,59 @@ Window {
             font.pixelSize: 12
             font.family: "monospace"
             color: pal.text
-            text: "Date & time\n" + "  $CURRENT_YEAR             four-digit year    2026\n" + "  $CURRENT_YEAR_SHORT        two-digit year     26\n" + "  $CURRENT_MONTH             month              04\n" + "  $CURRENT_MONTH_NAME        full name          April\n" + "  $CURRENT_MONTH_NAME_SHORT  short name         Apr\n" + "  $CURRENT_DATE              day                29\n" + "  $CURRENT_HOUR              hour 00–23         14\n" + "  $CURRENT_MINUTE            minute             07\n" + "  $CURRENT_SECOND            second             03\n" + "  $CURRENT_SECONDS_UNIX      Unix timestamp     1745920023\n\n" + "Identifiers\n" + "  $UUID                      UUID v4\n\n" + "Note context\n" + "  $NOTE_TITLE                note title\n" + "  $NOTE_FILENAME             note filename\n\n" + "System\n" + "  $OS_NAME                   Linux / macOS / Windows\n\n" + "Zettelkasten\n" + "  $ZK_ID                     ID (format in settings)"
+            text: "Date & time\n" + "  $CURRENT_YEAR             four-digit year    2026\n" + "  $CURRENT_YEAR_SHORT        two-digit year     26\n" + "  $CURRENT_MONTH             month              04\n" + "  $CURRENT_MONTH_NAME        full name          April\n" + "  $CURRENT_MONTH_NAME_SHORT  short name         Apr\n" + "  $CURRENT_DAY               day                29\n" + "  $CURRENT_DATE              day (deprecated)   29\n" + "  $CURRENT_HOUR              hour 00–23         14\n" + "  $CURRENT_MINUTE            minute             07\n" + "  $CURRENT_SECOND            second             03\n" + "  $CURRENT_SECONDS_UNIX      Unix timestamp     1745920023\n\n" + "Identifiers\n" + "  $UUID                      UUID v4\n\n" + "Note context\n" + "  $NOTE_TITLE                note title\n" + "  $NOTE_FILENAME             note filename\n\n" + "Editor context\n" + "  $CLIPBOARD                 clipboard text\n" + "  $SELECTION                 selected text\n" + "  $CURSOR                    cursor position after insert\n\n" + "System\n" + "  $OS_NAME                   Linux / macOS / Windows\n\n" + "Zettelkasten\n" + "  $ZK_ID                     ID (format in settings)"
         }
     }
 
     // ── Functions ─────────────────────────────────────────────────────────────
+    function addSnippet() {
+        if (isDirty && snippetList.currentIndex >= 0) {
+            var answer = script.questionMessageBox("\"" + nameInput.text + "\" has unsaved changes.\nSave before adding a new snippet?", "Unsaved changes", 2048 | 8388608 | 4194304, 2048);
+            if (answer === 2048) {
+                saveCurrentItem();
+            } else if (answer !== 8388608) {
+                return;
+            }
+        }
+        var copy = items.slice();
+        copy.push({
+            "name": "New snippet",
+            "content": ""
+        });
+        items = copy;
+        var idx = items.length - 1;
+        snippetList.currentIndex = idx;
+        loadItem(idx);
+        nameInput.selectAll();
+        nameInput.forceActiveFocus();
+    }
+
+    function removeSnippet(idx) {
+        var copy = items.slice();
+        copy.splice(idx, 1);
+        items = copy;
+        listDirty = true;
+        var next = Math.min(idx, items.length - 1);
+        snippetList.currentIndex = next;
+        if (next >= 0)
+            loadItem(next);
+        else
+            clearEditor();
+    }
+
+    function moveItem(idx, direction) {
+        var newIdx = idx + direction;
+        if (newIdx < 0 || newIdx >= items.length)
+            return;
+        var copy = items.slice();
+        var tmp = copy[idx];
+        copy[idx] = copy[newIdx];
+        copy[newIdx] = tmp;
+        items = copy;
+        snippetList.currentIndex = newIdx;
+        listDirty = true;
+    }
+
     function loadItem(idx) {
         if (idx < 0 || idx >= items.length)
             return;
@@ -495,6 +749,7 @@ Window {
         contentEdit.text = items[idx].content;
         updating = false;
         isDirty = false;
+        _editorLoaded = true;
     }
 
     function clearEditor() {
@@ -503,6 +758,7 @@ Window {
         contentEdit.text = "";
         updating = false;
         isDirty = false;
+        _editorLoaded = false;
     }
 
     function saveCurrentItem() {
@@ -516,8 +772,77 @@ Window {
             items = copy;
             snippetList.currentIndex = idx;
         }
+        var ti = _tabItems.slice();
+        ti[activeFile] = JSON.parse(JSON.stringify(items));
+        _tabItems = ti;
+        var td = _tabListDirty.slice();
+        td[activeFile] = false;
+        _tabListDirty = td;
         isDirty = false;
         listDirty = false;
-        snippetsSaved(items);
+        snippetsSaved(items, activeFile);
+    }
+
+    function hasUnsavedChanges() {
+        var curIdx = snippetList.currentIndex;
+        if (_editorLoaded && curIdx >= 0 && curIdx < items.length) {
+            if (nameInput.text !== items[curIdx].name || contentEdit.text !== items[curIdx].content)
+                return true;
+        }
+        if (JSON.stringify(items) !== JSON.stringify(_tabItems[activeFile]))
+            return true;
+        var otherTab = activeFile === 0 ? 1 : 0;
+        return !!_tabListDirty[otherTab];
+    }
+
+    function confirmClose() {
+        if (hasUnsavedChanges()) {
+            var answer = script.questionMessageBox("There are unsaved changes. Close without saving?", "Unsaved changes", 8388608 | 4194304, 4194304);
+            if (answer !== 8388608)
+                return;
+        }
+        root.close();
+    }
+
+    function switchTab(newTab) {
+        if (newTab === activeFile)
+            return;
+        var _curIdx = snippetList.currentIndex;
+        var _editorDirty = _editorLoaded && _curIdx >= 0 && _curIdx < items.length &&
+            (nameInput.text !== items[_curIdx].name || contentEdit.text !== items[_curIdx].content);
+        var _tabDirty = JSON.stringify(items) !== JSON.stringify(_tabItems[activeFile]);
+        if (_editorDirty || _tabDirty) {
+            var answer = script.questionMessageBox("Current tab has unsaved changes.\nSave before switching?", "Unsaved changes", 2048 | 8388608 | 4194304, 2048);
+            if (answer === 2048) {
+                saveCurrentItem();
+            } else if (answer !== 8388608) {
+                return;
+            } else {
+                isDirty = false;
+            }
+        }
+        // Flush editor state into items before leaving current tab
+        var curIdx = snippetList.currentIndex;
+        if (curIdx >= 0 && isDirty) {
+            var copy = items.slice();
+            copy[curIdx] = {
+                "name": nameInput.text,
+                "content": contentEdit.text
+            };
+            items = copy;
+        }
+        // Persist current tab state
+        var ti = _tabItems.slice();
+        ti[activeFile] = JSON.parse(JSON.stringify(items));
+        _tabItems = ti;
+        var td = _tabListDirty.slice();
+        td[activeFile] = isDirty || listDirty;
+        _tabListDirty = td;
+        // Activate new tab
+        activeFile = newTab;
+        items = JSON.parse(JSON.stringify(_tabItems[newTab]));
+        snippetList.currentIndex = -1;
+        clearEditor();
+        listDirty = _tabListDirty[newTab];
     }
 }
